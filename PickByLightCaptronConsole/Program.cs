@@ -1,7 +1,8 @@
-﻿using MQTTnet;
+﻿using System.Text.Json;
+using CaptronCommunicationModels;
+using MQTTnet;
 using MQTTnet.Server;
 using MQTTnet.Diagnostics.Logger;
-using CaptronCommunicationModels;
 
 internal class Program
 {
@@ -94,12 +95,96 @@ internal class Program
         await mqttClient.DisconnectAsync(mqttClientDisconnectOptions, CancellationToken.None);
     }
 
+    public static async Task<DeviceInformation> GetDeviceInformationAsync(string deviceId)
+    {
+        var responseTopic = $"/SEH100/nd/{deviceId}/Pub/MAM";
+        var requestTopic = $"/SEH100/nd/{deviceId}/Get/MAM";
+
+        var tcs = new TaskCompletionSource<DeviceInformation>();
+
+        // Antwort abonnieren
+        await mqttClient.SubscribeAsync(new MqttClientSubscribeOptionsBuilder()
+            .WithTopicFilter(responseTopic)
+            .Build());
+
+        mqttClient.ApplicationMessageReceivedAsync += handler;
+
+        // Anfrage senden
+        await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
+            .WithTopic(requestTopic)
+            .Build());
+
+        // Auf Antwort warten (max. 5 Sekunden)
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        cts.Token.Register(() => tcs.TrySetCanceled());
+
+        try
+        {
+            return await tcs.Task;
+        }
+        finally
+        {
+            mqttClient.ApplicationMessageReceivedAsync -= handler;
+            await mqttClient.UnsubscribeAsync(responseTopic);
+        }
+
+        Task handler(MqttApplicationMessageReceivedEventArgs e)
+        {
+            if (e.ApplicationMessage.Topic == responseTopic)
+            {
+                var payload = e.ApplicationMessage.ConvertPayloadToString();
+                var info = JsonSerializer.Deserialize<DeviceInformation>(payload);
+                tcs.TrySetResult(info);
+            }
+            return Task.CompletedTask;
+        }
+    }
+
+    public static async Task SetLedStripAsync(string deviceId, ActivateLEDStrip ledStrip)
+    {
+        var topic = $"/SEH100/nd/{deviceId}/Set/Data/LedStrip";
+
+        var payload = JsonSerializer.Serialize(ledStrip);
+
+        await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
+            .WithTopic(topic)
+            .WithPayload(payload)
+            .Build());
+
+        Console.WriteLine($"LED-Strip Konfiguration gesendet an {topic}");
+    }
+
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
         await ConnectToLocalServerAsync();
 
-        Console.WriteLine("Drücke Enter zum Beenden...");
+        await GetDeviceInformationAsync("123456789");
+
+        var ledStrip = new ActivateLEDStrip
+        {
+            Content = "LedStrip",
+            LedStrips =
+            {
+                ["LED_STRIP_1"] = new LED_STRIP
+                {
+                    Active = true,
+                    Segments =
+                    [
+                        new Segment
+                        {
+                            StartLED = 0,
+                            StopLED = 30,
+                            Speed = 190,
+                            Effect = 1,
+                            Colors = [ new Color { R = 0, G = 150, B = 0 } ]
+                        }
+                    ]
+                }
+            }
+        };
+        await SetLedStripAsync("123456789", ledStrip);
+
         Console.ReadLine();
 
         await DisconnectToLocalServerAsync();
