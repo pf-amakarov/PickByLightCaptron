@@ -3,7 +3,9 @@ using MQTTnet.Server;
 
 internal class Program
 {
-    private static async Task Main(string[] args)
+    public static MqttServer mqttServer;
+
+    public static async Task StartMqttServerAsync()
     {
         // 1. Erstelle einen Logger
         var logger = new MqttNetEventLogger();
@@ -42,8 +44,9 @@ internal class Program
             .Build();
 
         // 3. Server-Instanz erstellen
-        using (var mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions))
+        using (mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions))
         {
+            //mqttServer2 = mqttServer;
             // Event: Wenn ein Client sich verbindet
             mqttServer.ClientConnectedAsync += e =>
             {
@@ -54,11 +57,22 @@ internal class Program
             // Server starten
             await mqttServer.StartAsync();
 
-            Console.WriteLine("MQTT Server gestartet. Drücke Enter zum Beenden...");
-            Console.ReadLine();
-
-            // Server stoppen
-            await mqttServer.StopAsync();
+            Console.WriteLine("MQTT Server gestartet.");
         }
+    }
+
+    public static async Task StopMqttServerAsync()
+    {
+        await mqttServer.StopAsync();
+    }
+
+    public static async Task ConnectToLocalServerAsync()
+    {
+    }
+
+    private static async Task Main(string[] args)
+    {
+        await StartMqttServerAsync();
+        await StopMqttServerAsync();
     }
 }
