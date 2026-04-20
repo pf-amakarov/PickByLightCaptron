@@ -1,9 +1,13 @@
-﻿using MQTTnet.Diagnostics.Logger;
+﻿using MQTTnet;
 using MQTTnet.Server;
+using MQTTnet.Diagnostics.Logger;
+using CaptronCommunicationModels;
 
 internal class Program
 {
     public static MqttServer mqttServer;
+    public static MqttClientDisconnectOptions mqttClientDisconnectOptions;
+    public static IMqttClient mqttClient;
 
     public static async Task StartMqttServerAsync()
     {
@@ -43,36 +47,62 @@ internal class Program
             .WithDefaultEndpoint() // Nutzt standardmäßig Port 1883
             .Build();
 
-        // 3. Server-Instanz erstellen
-        using (mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions))
+        // 3. Server-Instanz erstellen und als statisches Feld speichern
+        mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions);
+
+        // Event: Wenn ein Client sich verbindet
+        mqttServer.ClientConnectedAsync += e =>
         {
-            //mqttServer2 = mqttServer;
-            // Event: Wenn ein Client sich verbindet
-            mqttServer.ClientConnectedAsync += e =>
-            {
-                Console.WriteLine($"Client verbunden: {e.ClientId}");
-                return Task.CompletedTask;
-            };
+            Console.WriteLine($"Client verbunden: {e.ClientId}");
+            return Task.CompletedTask;
+        };
 
-            // Server starten
-            await mqttServer.StartAsync();
+        // Server starten
+        await mqttServer.StartAsync();
 
-            Console.WriteLine("MQTT Server gestartet.");
-        }
+        Console.WriteLine("MQTT Server gestartet auf localhost:1883.");
     }
 
     public static async Task StopMqttServerAsync()
     {
-        await mqttServer.StopAsync();
+        if (mqttServer is not null)
+        {
+            await mqttServer.StopAsync();
+            mqttServer.Dispose();
+        }
     }
 
     public static async Task ConnectToLocalServerAsync()
     {
+        var mqttFactory = new MqttClientFactory();
+
+        mqttClient = mqttFactory.CreateMqttClient();
+
+        var mqttClientOptions = new MqttClientOptionsBuilder()
+            .WithTcpServer("localhost", 1883)
+            .Build();
+
+        var response = await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
+
+        Console.WriteLine($"Client verbunden. ResultCode: {response.ResultCode}");
+
+        mqttClientDisconnectOptions = mqttFactory.CreateClientDisconnectOptionsBuilder().Build();
+    }
+
+    public static async Task DisconnectToLocalServerAsync()
+    {
+        await mqttClient.DisconnectAsync(mqttClientDisconnectOptions, CancellationToken.None);
     }
 
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
+        await ConnectToLocalServerAsync();
+
+        Console.WriteLine("Drücke Enter zum Beenden...");
+        Console.ReadLine();
+
+        await DisconnectToLocalServerAsync();
         await StopMqttServerAsync();
     }
 }
