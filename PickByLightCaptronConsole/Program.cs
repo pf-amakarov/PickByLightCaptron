@@ -1,8 +1,25 @@
-﻿using System.Text.Json;
-using CaptronCommunicationModels;
+﻿using CaptronCommunicationModels;
 using MQTTnet;
-using MQTTnet.Server;
 using MQTTnet.Diagnostics.Logger;
+using MQTTnet.Server;
+using System.Drawing;
+using System.Text.Json;
+
+/// <summary>
+/// EU-WigglyCaringPie f8:b3:b7:c3:52:0f
+///
+/// Zur Offline-Konfiguration kann die integrierte Setup-Seite genutzt werden. Sie können darauf zugreifen,
+/// indem Sie in einem beliebigen Browser http://169.254.8.238 gefolgt von der IP-Adresse des Geräts eingeben. Standardmäßig versucht das Gerät,
+/// seine IP-Adresse über einen DHCP-Server zu beziehen. Auf diesem Server/Router können Sie die
+/// zugewiesene Adresse abrufen. Die Web-Setup-Seite ist ab Firmware-Version V0.227-29 verfügbar
+///
+/// http://169.254.8.238
+/// http://192.168.240.226
+/// http://169.254.101.201
+///
+///
+///
+/// </summary>
 
 internal class Program
 {
@@ -161,29 +178,34 @@ internal class Program
 
         await GetDeviceInformationAsync("123456789");
 
-        var ledStrip = new ActivateLEDStrip
-        {
-            Content = "LedStrip",
-            LedStrips =
-            {
-                ["LED_STRIP_1"] = new LED_STRIP
-                {
-                    Active = true,
-                    Segments =
-                    [
-                        new Segment
-                        {
-                            StartLED = 0,
-                            StopLED = 30,
-                            Speed = 190,
-                            Effect = 1,
-                            Colors = [ new Color { R = 0, G = 150, B = 0 } ]
-                        }
-                    ]
-                }
-            }
-        };
-        await SetLedStripAsync("123456789", ledStrip);
+        //var ledStrip = new ActivateLEDStrip
+        //{
+        //    Content = "LedStrip",
+        //    LedStrips =
+        //    {
+        //        ["LED_STRIP_1"] = new LED_STRIP
+        //        {
+        //            Active = true,
+        //            Segments =
+        //            [
+        //                new Segment
+        //                {
+        //                    StartLED = 0,
+        //                    StopLED = 30,
+        //                    Speed = 190,
+        //                    Effect = 1,
+        //                    Colors = [ new System.Drawing.Color
+        //                    {
+        //                        R = 0,
+        //                        G = 150,
+        //                        B = 0
+        //                    } ]
+        //                }
+        //            ]
+        //        }
+        //    }
+        //};
+        //await SetLedStripAsync("123456789", ledStrip);
 
         Console.ReadLine();
 
