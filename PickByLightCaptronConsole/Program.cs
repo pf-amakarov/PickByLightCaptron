@@ -125,7 +125,35 @@ internal class Program
 
     public static async Task ConnectToLocalServerAsync()
     {
-        var mqttFactory = new MqttClientFactory();
+        // 1. Logger erstellen
+        var logger = new MqttNetEventLogger();
+
+        // 2. LogMessagePublished abonnieren
+        logger.LogMessagePublished += (s, e) =>
+        {
+            var logMessage = e.LogMessage;
+
+            var color = logMessage.Level switch
+            {
+                MqttNetLogLevel.Error => ConsoleColor.Red,
+                MqttNetLogLevel.Warning => ConsoleColor.Yellow,
+                MqttNetLogLevel.Info => ConsoleColor.White,
+                _ => ConsoleColor.Gray
+            };
+
+            Console.ForegroundColor = color;
+            Console.WriteLine($"[{logMessage.Timestamp:HH:mm:ss}] [{logMessage.Level}] [{logMessage.Source}]: {logMessage.Message}");
+
+            if (logMessage.Exception != null)
+            {
+                Console.WriteLine(logMessage.Exception);
+            }
+
+            Console.ResetColor();
+        };
+
+        // 3. Client mit Logger erstellen
+        var mqttFactory = new MqttClientFactory(logger);
 
         mqttClient = mqttFactory.CreateMqttClient();
 
@@ -147,8 +175,8 @@ internal class Program
 
     public static async Task<DeviceInformation> GetDeviceInformationAsync()
     {
-        var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
         var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
+        var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
 
         var tcs = new TaskCompletionSource<DeviceInformation>();
 
@@ -165,7 +193,7 @@ internal class Program
             .Build());
 
         // Auf Antwort warten (max. 5 Sekunden)
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         cts.Token.Register(() => tcs.TrySetCanceled());
 
         try
@@ -208,12 +236,14 @@ internal class Program
 
     public static async Task SetLedStripAsync(ActivateLEDStrip ledStrip)
     {
-        var topic = $"/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
+        var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
 
         //var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
         //var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
 
         var payload = JsonSerializer.Serialize(ledStrip);
+
+        //var payload = "{\r\n  \"Content\": \"{Content definition}\",\r\n  \"LED_STRIP_1\": {\r\n    \"Active\": true,\r\n    \"Segments\": [\r\n      {\r\n        \"StartLED\": 0,\r\n        \"StopLED\": 30,\r\n        \"Speed\": 190,\r\n        \"Effect\": 1,\r\n        \"Colors\": [\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          },\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          }\r\n        ]\r\n      }\r\n    ]\r\n  }\r\n}";
 
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
@@ -244,57 +274,59 @@ internal class Program
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
-        await Task.Delay(10000);
-        await ConnectToLocalServerAsync();
 
+        // Warten bis sich das Captron-Gerät verbunden hat (max. 60 Sekunden)
+        Console.WriteLine("Warte auf Verbindung des Captron-Geräts...");
+        var deviceConnected = new TaskCompletionSource<bool>();
+
+        mqttServer.ClientConnectedAsync += e =>
+        {
+            Console.WriteLine($"Captron-Gerät verbunden: {e.ClientId}");
+            deviceConnected.TrySetResult(true);
+            return Task.CompletedTask;
+        };
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        cts.Token.Register(() => deviceConnected.TrySetCanceled());
+
+        try
+        {
+            await deviceConnected.Task;
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Timeout: Kein Captron-Gerät hat sich innerhalb von 60 Sekunden verbunden.");
+            return;
+        }
+
+        await ConnectToLocalServerAsync();
         DeviceInformation deviceInformation = await GetDeviceInformationAsync();
 
-        Console.WriteLine(deviceInformation.Content);
-        Console.WriteLine(deviceInformation.BoardName);
-        Console.WriteLine(deviceInformation.Manufacturer);
-        Console.WriteLine(deviceInformation.Model);
-        Console.WriteLine(deviceInformation.ProductCode);
-        Console.WriteLine(deviceInformation.Version);
-        Console.WriteLine(deviceInformation.Uptime);
-        Console.WriteLine(deviceInformation.Conn);
-        Console.WriteLine(deviceInformation.SegmentsActivated);
-        Console.WriteLine(deviceInformation.LightUp);
-        await Task.Delay(-1);
-        Console.ReadKey();
-        //var deviceIds = await GetAllUniqueIDs();
+        Console.WriteLine($"Content			    :	{deviceInformation.Content}");
+        Console.WriteLine($"BoardName		    :	{deviceInformation.BoardName}");
+        Console.WriteLine($"Manufacturer	    :	{deviceInformation.Manufacturer}");
+        Console.WriteLine($"Model			    :	{deviceInformation.Model}");
+        Console.WriteLine($"ProductCode		    :	{deviceInformation.ProductCode}");
+        Console.WriteLine($"Version			    :	{deviceInformation.Version}");
+        Console.WriteLine($"Uptime			    :	{deviceInformation.Uptime}");
+        Console.WriteLine($"Conn			    :	{deviceInformation.Conn}");
+        Console.WriteLine($"SegmentsActivated   :	{deviceInformation.SegmentsActivated}");
+        Console.WriteLine($"LightUp			    :	{deviceInformation.LightUp}");
 
-        //await GetDeviceInformationAsync("EU-WigglyCaringPie");
+        ActivateLEDStrip activateLEDStrip = new ActivateLEDStrip
+        {
+            Content = "LED_STRIP_1",
+            LedStrips = new Dictionary<string, object>
+            {
+                { "SegmentIndex", 0 },
+                { "Red", 255 },
+                { "Green", 0 },
+                { "Blue", 0 },
+                { "Brightness", 128 }
+            }
+        };
 
-        ////var ledStrip = new ActivateLEDStrip
-        ////{
-        ////    Content = "LedStrip",
-        ////    LedStrips =
-        ////    {
-        ////        ["LED_STRIP_1"] = new LED_STRIP
-        ////        {
-        ////            Active = true,
-        ////            Segments =
-        ////            [
-        ////                new Segment
-        ////                {
-        ////                    StartLED = 0,
-        ////                    StopLED = 30,
-        ////                    Speed = 190,
-        ////                    Effect = 1,
-        ////                    Colors = [ new System.Drawing.Color
-        ////                    {
-        ////                        R = 0,
-        ////                        G = 150,
-        ////                        B = 0
-        ////                    } ]
-        ////                }
-        ////            ]
-        ////        }
-        ////    }
-        ////};
-        ////await SetLedStripAsync("123456789", ledStrip);
-
-        //Console.ReadLine();
+        await SetLedStripAsync(activateLEDStrip);
 
         await DisconnectToLocalServerAsync();
         await StopMqttServerAsync();
