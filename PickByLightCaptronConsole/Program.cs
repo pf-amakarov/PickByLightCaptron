@@ -27,22 +27,36 @@ using System.Text.Json;
 ///
 /// </summary>
 
-public class DeviceInformation
-{
-    public string Content { get; set; }
-    public string BoardName { get; set; }
-    public string Manufacturer { get; set; }
-    public string Model { get; set; }
-    public string ProductCode { get; set; }
-    public string SoftwareVersion { get; set; }
-}
+/// <summary>
+///
+/// Beispiel Payload für die Device Information:
+///
+/// {
+///   "Content": "{Content definition}",
+///   "BoardName": "lucky_python",
+///   "Manufacturer": "CAPTRON",
+///   "Model": "PYTHON-Head",
+///   "ProductCode": "123456789",
+///   "SoftwareVersion": "v0.0.1"
+/// }
+///
+/// </summary>
+//public class DeviceInformation
+//{
+//    public string Content { get; set; }
+//    public string BoardName { get; set; }
+//    public string Manufacturer { get; set; }
+//    public string Model { get; set; }
+//    public string ProductCode { get; set; }
+//    public string SoftwareVersion { get; set; }
+//}
 
 internal class Program
 {
     public static MqttServer mqttServer;
     public static MqttClientDisconnectOptions mqttClientDisconnectOptions;
     public static IMqttClient mqttClient;
-    private const string Product = "SEH201-EU";
+    private const string Product = "SEH201";
     private const string DeviceId = "EU-WigglyCaringPie";
 
     public static async Task StartMqttServerAsync()
@@ -131,10 +145,10 @@ internal class Program
         await mqttClient.DisconnectAsync(mqttClientDisconnectOptions, CancellationToken.None);
     }
 
-    public static async Task<DeviceInformation> GetDeviceInformationAsync(string deviceId)
+    public static async Task<DeviceInformation> GetDeviceInformationAsync()
     {
-        var responseTopic = $"/SEH100/nd/{deviceId}/Pub/MAM";
-        var requestTopic = $"/SEH100/nd/{deviceId}/Get/MAM";
+        var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
+        var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
 
         var tcs = new TaskCompletionSource<DeviceInformation>();
 
@@ -151,7 +165,7 @@ internal class Program
             .Build());
 
         // Auf Antwort warten (max. 5 Sekunden)
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         cts.Token.Register(() => tcs.TrySetCanceled());
 
         try
@@ -168,17 +182,36 @@ internal class Program
         {
             if (e.ApplicationMessage.Topic == responseTopic)
             {
-                var payload = e.ApplicationMessage.ConvertPayloadToString();
-                var info = JsonSerializer.Deserialize<DeviceInformation>(payload);
-                tcs.TrySetResult(info);
+                var payload = e.ApplicationMessage.Payload;
+
+                if (!payload.IsEmpty)
+                {
+                    try
+                    {
+                        var jsonPayload = Encoding.UTF8.GetString(payload.ToArray());
+                        var info = JsonSerializer.Deserialize<DeviceInformation>(jsonPayload);
+
+                        if (info is not null)
+                        {
+                            tcs.TrySetResult(info);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }
             }
             return Task.CompletedTask;
         }
     }
 
-    public static async Task SetLedStripAsync(string deviceId, ActivateLEDStrip ledStrip)
+    public static async Task SetLedStripAsync(ActivateLEDStrip ledStrip)
     {
-        var topic = $"/SEH100/nd/{deviceId}/Set/Data/LedStrip";
+        var topic = $"/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
+
+        //var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
+        //var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
 
         var payload = JsonSerializer.Serialize(ledStrip);
 
@@ -190,6 +223,11 @@ internal class Program
         Console.WriteLine($"LED-Strip Konfiguration gesendet an {topic}");
     }
 
+    //public static async Task<ActivateLEDStrip> GetLedStripAsync()
+    //{
+    //    var topic = $"/SEH100/nd/{DeviceId}/Set/Data/LedStrip";
+    //}
+
     //public static async Task<List<string>> GetAllUniqueIDs()
     //{
     //    var list = new List<string>();
@@ -197,58 +235,28 @@ internal class Program
 
     // 1. Datenmodell für die Device Information (Message Payload Data)
 
-    /// <summary>
-    /// Abonniert das Pub-Topic und sendet eine Anfrage an das Get-Topic.
-    /// </summary>
-    public async Task RequestDeviceInformationAsync()
-    {
-        // Topics basierend auf Bild-Spezifikation
-        string getTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
-        string pubTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
-
-        // 1. Auf die Antwort warten (Subscribe)
-        await mqttClient.SubscribeAsync(new MqttClientSubscribeOptionsBuilder()
-            .WithTopicFilter(pubTopic)
-            .Build());
-
-        // Handler für eingehende Nachrichten definieren
-        mqttClient.ApplicationMessageReceivedAsync += e =>
-        {
-            if (e.ApplicationMessage.Topic == pubTopic)
-            {
-                var payloadBytes = e.ApplicationMessage.Payload.ToArray();
-                var payloadString = Encoding.UTF8.GetString(payloadBytes);
-                var info = JsonSerializer.Deserialize<DeviceInformation>(payloadString);
-
-                Console.WriteLine($"--- Geräte-Info empfangen ---");
-                Console.WriteLine($"Modell: {info.Model}");
-                Console.WriteLine($"Software: {info.SoftwareVersion}");
-                Console.WriteLine($"Hersteller: {info.Manufacturer}");
-            }
-            return Task.CompletedTask;
-        };
-
-        // 2. Die Anfrage senden (Publish an Get-Topic)
-        // Laut Bild ist das Payload für 'Get' "n.a." (nicht verfügbar/leer)
-        var message = new MqttApplicationMessageBuilder()
-            .WithTopic(getTopic)
-            .WithPayload(Array.Empty<byte>())
-            .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-            .Build();
-
-        await mqttClient.PublishAsync(message);
-        Console.WriteLine($"Anfrage an {getTopic} gesendet...");
-    }
+    //public static async Task<DeviceInformation> GetDeviceInformation()
+    //{
+    //    string getTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
+    //    string pubTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
+    //}
 
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
-
+        await Task.Delay(10000);
         await ConnectToLocalServerAsync();
 
-        Console.WriteLine("Broker läuft auf Port 1883...");
-        Console.ReadKey();
+        DeviceInformation deviceInformation = await GetDeviceInformationAsync();
 
+        Console.WriteLine(deviceInformation.Content);
+        Console.WriteLine(deviceInformation.BoardName);
+        Console.WriteLine(deviceInformation.Manufacturer);
+        Console.WriteLine(deviceInformation.Model);
+        Console.WriteLine(deviceInformation.ProductCode);
+        Console.WriteLine(deviceInformation.SoftwareVersion);
+        await Task.Delay(-1);
+        Console.ReadKey();
         //var deviceIds = await GetAllUniqueIDs();
 
         //await GetDeviceInformationAsync("EU-WigglyCaringPie");
