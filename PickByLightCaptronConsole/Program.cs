@@ -254,7 +254,11 @@ internal class Program
         Console.WriteLine(deviceInformation.Manufacturer);
         Console.WriteLine(deviceInformation.Model);
         Console.WriteLine(deviceInformation.ProductCode);
-        Console.WriteLine(deviceInformation.SoftwareVersion);
+        Console.WriteLine(deviceInformation.Version);
+        Console.WriteLine(deviceInformation.Uptime);
+        Console.WriteLine(deviceInformation.Conn);
+        Console.WriteLine(deviceInformation.SegmentsActivated);
+        Console.WriteLine(deviceInformation.LightUp);
         await Task.Delay(-1);
         Console.ReadKey();
         //var deviceIds = await GetAllUniqueIDs();
