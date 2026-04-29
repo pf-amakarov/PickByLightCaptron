@@ -3,6 +3,9 @@ using MQTTnet;
 using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Server;
 using System.Drawing;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text.Json;
 
 /// <summary>
@@ -16,7 +19,8 @@ using System.Text.Json;
 /// http://169.254.8.238
 /// http://192.168.240.226
 /// http://169.254.101.201
-///
+/// 169.254.101.2
+/// http://169.254.101.2
 ///
 ///
 /// </summary>
@@ -58,15 +62,16 @@ internal class Program
         };
 
         // 1. Instanz der Factory erstellen
-        var mqttFactory = new MqttServerFactory(logger);
+        var mqttServerFactory = new MqttServerFactory(logger);
 
-        // 2. Optionen konfigurieren (Port, Endpunkt, etc.)
-        var mqttServerOptions = mqttFactory.CreateServerOptionsBuilder()
-            .WithDefaultEndpoint() // Nutzt standardmäßig Port 1883
-            .Build();
+        var mqttServerOptions = mqttServerFactory.CreateServerOptionsBuilder()
+        .WithDefaultEndpoint()
+        .WithDefaultEndpointBoundIPAddress(IPAddress.Any)
+        .WithDefaultEndpointPort(1883)
+        .Build();
 
         // 3. Server-Instanz erstellen und als statisches Feld speichern
-        mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions);
+        mqttServer = mqttServerFactory.CreateMqttServer(mqttServerOptions);
 
         // Event: Wenn ein Client sich verbindet
         mqttServer.ClientConnectedAsync += e =>
@@ -171,43 +176,53 @@ internal class Program
         Console.WriteLine($"LED-Strip Konfiguration gesendet an {topic}");
     }
 
+    //public static async Task<List<string>> GetAllUniqueIDs()
+    //{
+    //    var list = new List<string>();
+    //}
+
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
+
         await ConnectToLocalServerAsync();
 
-        await GetDeviceInformationAsync("123456789");
+        Console.WriteLine("Broker läuft auf Port 1883...");
+        Console.ReadKey();
+        //var deviceIds = await GetAllUniqueIDs();
 
-        //var ledStrip = new ActivateLEDStrip
-        //{
-        //    Content = "LedStrip",
-        //    LedStrips =
-        //    {
-        //        ["LED_STRIP_1"] = new LED_STRIP
-        //        {
-        //            Active = true,
-        //            Segments =
-        //            [
-        //                new Segment
-        //                {
-        //                    StartLED = 0,
-        //                    StopLED = 30,
-        //                    Speed = 190,
-        //                    Effect = 1,
-        //                    Colors = [ new System.Drawing.Color
-        //                    {
-        //                        R = 0,
-        //                        G = 150,
-        //                        B = 0
-        //                    } ]
-        //                }
-        //            ]
-        //        }
-        //    }
-        //};
-        //await SetLedStripAsync("123456789", ledStrip);
+        //await GetDeviceInformationAsync("EU-WigglyCaringPie");
 
-        Console.ReadLine();
+        ////var ledStrip = new ActivateLEDStrip
+        ////{
+        ////    Content = "LedStrip",
+        ////    LedStrips =
+        ////    {
+        ////        ["LED_STRIP_1"] = new LED_STRIP
+        ////        {
+        ////            Active = true,
+        ////            Segments =
+        ////            [
+        ////                new Segment
+        ////                {
+        ////                    StartLED = 0,
+        ////                    StopLED = 30,
+        ////                    Speed = 190,
+        ////                    Effect = 1,
+        ////                    Colors = [ new System.Drawing.Color
+        ////                    {
+        ////                        R = 0,
+        ////                        G = 150,
+        ////                        B = 0
+        ////                    } ]
+        ////                }
+        ////            ]
+        ////        }
+        ////    }
+        ////};
+        ////await SetLedStripAsync("123456789", ledStrip);
+
+        //Console.ReadLine();
 
         await DisconnectToLocalServerAsync();
         await StopMqttServerAsync();
