@@ -1,34 +1,6 @@
 namespace CaptronCommunicationModels
 {
     using System.Collections.Generic;
-    using System.Text.Json.Serialization;
-
-    /// <summary>
-    /// [captron.com/](https://captron.com/){product}/nd/{device-id}/Set/Data/LedStrip
-    ///
-    ///{
-    ///  "Content": "{Content definition}",
-    ///  "LED_STRIP_1": {
-    ///    "Active": true,
-    ///    "Segments": [
-    ///      {
-    ///        "StartLED": 0,
-    ///        "StopLED": 30,
-    ///        "Speed": 190,
-    ///        "Effect": 1,
-    ///        "Colors": [
-    ///          {
-    ///            "R": 0,
-    ///            "G": 150,
-    ///            "B": 0
-    ///          }
-    ///        ]
-    ///      }
-    ///    ]
-    ///  }
-    ///}
-    ///
-    /// </summary>
 
     public class LedControlMessage
     {

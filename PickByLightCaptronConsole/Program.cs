@@ -4,53 +4,9 @@ using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Server;
 using PickByLightCaptronConsole.models;
 using System.Buffers;
-using System.Drawing;
 using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-
-/// <summary>
-/// EU-WigglyCaringPie f8:b3:b7:c3:52:0f
-///
-/// Zur Offline-Konfiguration kann die integrierte Setup-Seite genutzt werden. Sie können darauf zugreifen,
-/// indem Sie in einem beliebigen Browser http://169.254.8.238 gefolgt von der IP-Adresse des Geräts eingeben. Standardmäßig versucht das Gerät,
-/// seine IP-Adresse über einen DHCP-Server zu beziehen. Auf diesem Server/Router können Sie die
-/// zugewiesene Adresse abrufen. Die Web-Setup-Seite ist ab Firmware-Version V0.227-29 verfügbar
-///
-/// http://169.254.8.238
-/// http://192.168.240.226
-/// http://169.254.101.201
-/// 169.254.101.2
-/// http://169.254.101.2
-///
-///
-/// </summary>
-
-/// <summary>
-///
-/// Beispiel Payload für die Device Information:
-///
-/// {
-///   "Content": "{Content definition}",
-///   "BoardName": "lucky_python",
-///   "Manufacturer": "CAPTRON",
-///   "Model": "PYTHON-Head",
-///   "ProductCode": "123456789",
-///   "SoftwareVersion": "v0.0.1"
-/// }
-///
-/// </summary>
-//public class DeviceInformation
-//{
-//    public string Content { get; set; }
-//    public string BoardName { get; set; }
-//    public string Manufacturer { get; set; }
-//    public string Model { get; set; }
-//    public string ProductCode { get; set; }
-//    public string SoftwareVersion { get; set; }
-//}
 
 internal class Program
 {
@@ -62,15 +18,12 @@ internal class Program
 
     public static async Task StartMqttServerAsync()
     {
-        // 1. Erstelle einen Logger
         var logger = new MqttNetEventLogger();
 
-        // 2. Abonniere das LogMessagePublished Event
         logger.LogMessagePublished += (s, e) =>
         {
             var logMessage = e.LogMessage;
 
-            // Formatierung der Ausgabe
             var color = logMessage.Level switch
             {
                 MqttNetLogLevel.Error => ConsoleColor.Red,
@@ -90,7 +43,6 @@ internal class Program
             Console.ResetColor();
         };
 
-        // 1. Instanz der Factory erstellen
         var mqttServerFactory = new MqttServerFactory(logger);
 
         var mqttServerOptions = mqttServerFactory.CreateServerOptionsBuilder()
@@ -99,17 +51,14 @@ internal class Program
         .WithDefaultEndpointPort(1883)
         .Build();
 
-        // 3. Server-Instanz erstellen und als statisches Feld speichern
         mqttServer = mqttServerFactory.CreateMqttServer(mqttServerOptions);
 
-        // Event: Wenn ein Client sich verbindet
         mqttServer.ClientConnectedAsync += e =>
         {
             Console.WriteLine($"Client verbunden: {e.ClientId}");
             return Task.CompletedTask;
         };
 
-        // Server starten
         await mqttServer.StartAsync();
 
         Console.WriteLine("MQTT Server gestartet auf localhost:1883.");
@@ -126,10 +75,8 @@ internal class Program
 
     public static async Task ConnectToLocalServerAsync()
     {
-        // 1. Logger erstellen
         var logger = new MqttNetEventLogger();
 
-        // 2. LogMessagePublished abonnieren
         logger.LogMessagePublished += (s, e) =>
         {
             var logMessage = e.LogMessage;
@@ -153,7 +100,6 @@ internal class Program
             Console.ResetColor();
         };
 
-        // 3. Client mit Logger erstellen
         var mqttFactory = new MqttClientFactory(logger);
 
         mqttClient = mqttFactory.CreateMqttClient();
@@ -181,19 +127,16 @@ internal class Program
 
         var tcs = new TaskCompletionSource<DeviceInformation>();
 
-        // Antwort abonnieren
         await mqttClient.SubscribeAsync(new MqttClientSubscribeOptionsBuilder()
             .WithTopicFilter(responseTopic)
             .Build());
 
         mqttClient.ApplicationMessageReceivedAsync += handler;
 
-        // Anfrage senden
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(requestTopic)
             .Build());
 
-        // Auf Antwort warten (max. 5 Sekunden)
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         cts.Token.Register(() => tcs.TrySetCanceled());
 
@@ -267,30 +210,10 @@ internal class Program
         Console.WriteLine($"LedStripConfig Konfiguration gesendet an {topic}");
     }
 
-    //public static async Task<ActivateLEDStrip> GetLedStripAsync()
-
-    //{
-    //    var topic = $"/SEH100/nd/{DeviceId}/Set/Data/LedStrip";
-    //}
-
-    //public static async Task<List<string>> GetAllUniqueIDs()
-    //{
-    //    var list = new List<string>();
-    //}
-
-    // 1. Datenmodell für die Device Information (Message Payload Data)
-
-    //public static async Task<DeviceInformation> GetDeviceInformation()
-    //{
-    //    string getTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
-    //    string pubTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
-    //}
-
     private static async Task Main(string[] args)
     {
         await StartMqttServerAsync();
 
-        // Warten bis sich das Captron-Gerät verbunden hat (max. 60 Sekunden)
         Console.WriteLine("Warte auf Verbindung des Captron-Geräts...");
         var deviceConnected = new TaskCompletionSource<bool>();
 
@@ -365,8 +288,8 @@ internal class Program
                         Effect = 1,
                         Colors = new List<ColorRgb>
                         {
-                            new ColorRgb { R = 0, G = 150, B = 0 }, // Erstes Grün
-                            new ColorRgb { R = 0, G = 150, B = 0 }  // Zweites Grün
+                            new ColorRgb { R = 0, G = 150, B = 0 },
+                            new ColorRgb { R = 0, G = 150, B = 0 }
                         }
                     }
                 }
