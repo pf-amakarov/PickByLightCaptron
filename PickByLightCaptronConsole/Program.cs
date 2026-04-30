@@ -241,6 +241,7 @@ internal class Program
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         string payload = JsonSerializer.Serialize(ledControlMessage, options);
+        Console.WriteLine(payload);
 
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
@@ -248,15 +249,15 @@ internal class Program
             .Build());
 
         Console.WriteLine($"LED-Strip Konfiguration gesendet an {topic}");
-        Console.WriteLine(payload);
     }
 
     public static async Task SetLEDStripeConfig(LedStripConfig ledStripConfig)
     {
-        var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
+        var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Config/LedStrip";
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         string payload = JsonSerializer.Serialize(ledStripConfig, options);
+        Console.WriteLine(payload);
 
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
@@ -264,7 +265,6 @@ internal class Program
             .Build());
 
         Console.WriteLine($"LedStripConfig Konfiguration gesendet an {topic}");
-        Console.WriteLine(payload);
     }
 
     //public static async Task<ActivateLEDStrip> GetLedStripAsync()
