@@ -251,15 +251,18 @@ internal class Program
         Console.WriteLine(payload);
     }
 
-    public static async Task SetLEDStripe(LedStripConfig ledStripConfig)
+    public static async Task SetLEDStripeConfig(LedStripConfig ledStripConfig)
     {
         var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
+
         var options = new JsonSerializerOptions { WriteIndented = true };
         string payload = JsonSerializer.Serialize(ledStripConfig, options);
+
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
             .WithPayload(payload)
             .Build());
+
         Console.WriteLine($"LedStripConfig Konfiguration gesendet an {topic}");
         Console.WriteLine(payload);
     }
@@ -333,7 +336,7 @@ internal class Program
         Console.WriteLine("└" + separator + "┘");
         Console.WriteLine();
 
-        var config = new LedStripConfig
+        var ledStripConfig = new LedStripConfig
         {
             Content = "/Set/Config/LedStrip",
             Demo = false
@@ -341,10 +344,10 @@ internal class Program
 
         for (int i = 1; i <= 5; i++)
         {
-            config.LedStrips.Add($"LED_STRIP_{i}", new StripDetails { Length = "42" });
+            ledStripConfig.LedStrips.Add($"LED_STRIP_{i}", new StripDetails { Length = "42" });
         }
 
-        await SetLEDStripe(config);
+        await SetLEDStripeConfig(ledStripConfig);
 
         var ledControlMessage = new LedControlMessage
         {
