@@ -11,7 +11,7 @@ public class Program
         {
             // "{Content definition}" wird hier meist durch "set" ersetzt,
             // um die LEDs tatsächlich zu steuern.
-            Content = "set",
+            Content = "/Set/Data/LedStrip",
 
             LED_STRIP_1 = new LedStrip
             {
@@ -34,7 +34,6 @@ public class Program
             }
         };
 
-        // Umwandlung in JSON-String (wie im Bild zu sehen)
         var options = new JsonSerializerOptions { WriteIndented = true };
         string jsonOutput = JsonSerializer.Serialize(ledMessage, options);
 

@@ -234,16 +234,12 @@ internal class Program
         }
     }
 
-    public static async Task SetLedStripAsync(ActivateLEDStrip ledStrip)
+    public static async Task SetLedStripAsync(LedControlMessage ledControlMessage)
     {
         var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
 
-        //var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
-        //var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
-
-        //var payload = JsonSerializer.Serialize(ledStrip);
-
-        var payload = "{\r\n  \"Content\": \"{Content definition}\",\r\n  \"LED_STRIP_1\": {\r\n    \"Active\": true,\r\n    \"Segments\": [\r\n      {\r\n        \"StartLED\": 0,\r\n        \"StopLED\": 30,\r\n        \"Speed\": 190,\r\n        \"Effect\": 1,\r\n        \"Colors\": [\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          },\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          }\r\n        ]\r\n      }\r\n    ]\r\n  }\r\n}";
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        string payload = JsonSerializer.Serialize(ledControlMessage, options);
 
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
@@ -251,6 +247,7 @@ internal class Program
             .Build());
 
         Console.WriteLine($"LED-Strip Konfiguration gesendet an {topic}");
+        Console.WriteLine(payload);
     }
 
     //public static async Task<ActivateLEDStrip> GetLedStripAsync()
@@ -302,31 +299,50 @@ internal class Program
         await ConnectToLocalServerAsync();
         DeviceInformation deviceInformation = await GetDeviceInformationAsync();
 
-        Console.WriteLine($"Content			    :	{deviceInformation.Content}");
-        Console.WriteLine($"BoardName		    :	{deviceInformation.BoardName}");
-        Console.WriteLine($"Manufacturer	    :	{deviceInformation.Manufacturer}");
-        Console.WriteLine($"Model			    :	{deviceInformation.Model}");
-        Console.WriteLine($"ProductCode		    :	{deviceInformation.ProductCode}");
-        Console.WriteLine($"Version			    :	{deviceInformation.Version}");
-        Console.WriteLine($"Uptime			    :	{deviceInformation.Uptime}");
-        Console.WriteLine($"Conn			    :	{deviceInformation.Conn}");
-        Console.WriteLine($"SegmentsActivated   :	{deviceInformation.SegmentsActivated}");
-        Console.WriteLine($"LightUp			    :	{deviceInformation.LightUp}");
+        var separator = new string('─', 90);
 
-        ActivateLEDStrip activateLEDStrip = new ActivateLEDStrip
+        Console.WriteLine();
+        Console.WriteLine("┌" + separator + "┐");
+        Console.WriteLine($"│{"  Device Information",-90}│");
+        Console.WriteLine("├" + separator + "┤");
+        Console.WriteLine($"│  {"Content",-40} {deviceInformation.Content,-47}│");
+        Console.WriteLine($"│  {"Board Name",-40} {deviceInformation.BoardName,-47}│");
+        Console.WriteLine($"│  {"Manufacturer",-40} {deviceInformation.Manufacturer,-47}│");
+        Console.WriteLine($"│  {"Model",-40} {deviceInformation.Model,-47}│");
+        Console.WriteLine($"│  {"Product Code",-40} {deviceInformation.ProductCode,-47}│");
+        Console.WriteLine($"│  {"Version",-40} {deviceInformation.Version,-47}│");
+        Console.WriteLine($"│  {"Uptime",-40} {deviceInformation.Uptime,-47}│");
+        Console.WriteLine($"│  {"Connection",-40} {deviceInformation.Conn,-47}│");
+        Console.WriteLine($"│  {"Segments Activated",-40} {deviceInformation.SegmentsActivated,-47}│");
+        Console.WriteLine($"│  {"Light Up",-40} {deviceInformation.LightUp,-47}│");
+        Console.WriteLine("└" + separator + "┘");
+        Console.WriteLine();
+
+        var ledControlMessage = new LedControlMessage
         {
-            Content = "LED_STRIP_1",
-            LedStrips = new Dictionary<string, object>
+            Content = "/Set/Data/LedStrip",
+            LED_STRIP_1 = new LedStrip
             {
-                { "SegmentIndex", 0 },
-                { "Red", 255 },
-                { "Green", 0 },
-                { "Blue", 0 },
-                { "Brightness", 128 }
+                Active = true,
+                Segments = new List<Segment>
+                {
+                    new Segment
+                    {
+                        StartLED = 0,
+                        StopLED = 30,
+                        Speed = 190,
+                        Effect = 1,
+                        Colors = new List<ColorRgb>
+                        {
+                            new ColorRgb { R = 0, G = 150, B = 0 }, // Erstes Grün
+                            new ColorRgb { R = 0, G = 150, B = 0 }  // Zweites Grün
+                        }
+                    }
+                }
             }
         };
 
-        await SetLedStripAsync(activateLEDStrip);
+        await SetLedStripAsync(ledControlMessage);
 
         await DisconnectToLocalServerAsync();
         await StopMqttServerAsync();

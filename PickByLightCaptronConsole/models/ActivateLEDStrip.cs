@@ -30,54 +30,31 @@ namespace CaptronCommunicationModels
     ///
     /// </summary>
 
-    public class ActivateLEDStrip
+    public class LedControlMessage
     {
-        [JsonPropertyName("Content")]
         public string Content { get; set; }
-
-        /// <summary>
-        /// Schlüssel: z.B. "LED_STRIP_1", "LED_STRIP_2"
-        /// </summary>
-        [JsonExtensionData]
-        public Dictionary<string, object> LedStrips { get; set; } = new();
+        public LedStrip LED_STRIP_1 { get; set; }
     }
 
-    public class LED_STRIP
+    public class LedStrip
     {
-        [JsonPropertyName("Active")]
         public bool Active { get; set; }
-
-        [JsonPropertyName("Segments")]
-        public Segment[] Segments { get; set; }
+        public List<Segment> Segments { get; set; }
     }
 
     public class Segment
     {
-        [JsonPropertyName("StartLED")]
         public int StartLED { get; set; }
-
-        [JsonPropertyName("StopLED")]
         public int StopLED { get; set; }
-
-        [JsonPropertyName("Speed")]
         public int Speed { get; set; }
-
-        [JsonPropertyName("Effect")]
         public int Effect { get; set; }
-
-        [JsonPropertyName("Colors")]
-        public Color[] Colors { get; set; }
+        public List<ColorRgb> Colors { get; set; }
     }
 
-    public class Color
+    public class ColorRgb
     {
-        [JsonPropertyName("R")]
         public int R { get; set; }
-
-        [JsonPropertyName("G")]
         public int G { get; set; }
-
-        [JsonPropertyName("B")]
         public int B { get; set; }
     }
 }
