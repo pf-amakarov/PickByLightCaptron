@@ -241,9 +241,9 @@ internal class Program
         //var responseTopic = $"captron.com/{Product}/nd/{DeviceId}/Pub/MAM";
         //var requestTopic = $"captron.com/{Product}/nd/{DeviceId}/Get/MAM";
 
-        var payload = JsonSerializer.Serialize(ledStrip);
+        //var payload = JsonSerializer.Serialize(ledStrip);
 
-        //var payload = "{\r\n  \"Content\": \"{Content definition}\",\r\n  \"LED_STRIP_1\": {\r\n    \"Active\": true,\r\n    \"Segments\": [\r\n      {\r\n        \"StartLED\": 0,\r\n        \"StopLED\": 30,\r\n        \"Speed\": 190,\r\n        \"Effect\": 1,\r\n        \"Colors\": [\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          },\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          }\r\n        ]\r\n      }\r\n    ]\r\n  }\r\n}";
+        var payload = "{\r\n  \"Content\": \"{Content definition}\",\r\n  \"LED_STRIP_1\": {\r\n    \"Active\": true,\r\n    \"Segments\": [\r\n      {\r\n        \"StartLED\": 0,\r\n        \"StopLED\": 30,\r\n        \"Speed\": 190,\r\n        \"Effect\": 1,\r\n        \"Colors\": [\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          },\r\n          {\r\n            \"R\": 0,\r\n            \"G\": 150,\r\n            \"B\": 0\r\n          }\r\n        ]\r\n      }\r\n    ]\r\n  }\r\n}";
 
         await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
             .WithTopic(topic)
