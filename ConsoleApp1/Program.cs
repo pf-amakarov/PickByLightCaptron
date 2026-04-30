@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 public class Program
 {
@@ -38,7 +39,42 @@ public class Program
         string jsonOutput = JsonSerializer.Serialize(ledMessage, options);
 
         Console.WriteLine(jsonOutput);
+
+        // 1. Objekt initialisieren
+        var config = new LedStripConfig
+        {
+            Content = "{Content definition}",
+            Demo = false
+        };
+
+        // 2. LED-Streifen 1 bis 5 hinzufügen
+        for (int i = 1; i <= 5; i++)
+        {
+            config.LedStrips.Add($"LED_STRIP_{i}", new StripDetails { Length = "42" });
+        }
+
+        // 3. In JSON umwandeln und in die Konsole schreiben
+        //var options = new JsonSerializerOptions { WriteIndented = true };
+        string jsonString = JsonSerializer.Serialize(config, options);
+
+        Console.WriteLine("Generiertes JSON für LED Stripe.png:");
+        Console.WriteLine(jsonString);
     }
+}
+
+public class LedStripConfig
+{
+    public string Content { get; set; }
+    public bool Demo { get; set; }
+
+    // Verwende ein Dictionary für die dynamischen LED_STRIP_X Schlüssel
+    [JsonExtensionData]
+    public Dictionary<string, object> LedStrips { get; set; } = new Dictionary<string, object>();
+}
+
+public class StripDetails
+{
+    public string Length { get; set; }
 }
 
 // --- Klassenstruktur ---

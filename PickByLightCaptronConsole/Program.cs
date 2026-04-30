@@ -2,6 +2,7 @@
 using MQTTnet;
 using MQTTnet.Diagnostics.Logger;
 using MQTTnet.Server;
+using PickByLightCaptronConsole.models;
 using System.Buffers;
 using System.Drawing;
 using System.Net;
@@ -234,7 +235,7 @@ internal class Program
         }
     }
 
-    public static async Task SetLedStripAsync(LedControlMessage ledControlMessage)
+    public static async Task ActiveLEDStripe(LedControlMessage ledControlMessage)
     {
         var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
 
@@ -250,7 +251,21 @@ internal class Program
         Console.WriteLine(payload);
     }
 
+    public static async Task SetLEDStripe(LedStripConfig ledStripConfig)
+    {
+        var topic = $"captron.com/{Product}/nd/{DeviceId}/Set/Data/LedStrip";
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        string payload = JsonSerializer.Serialize(ledStripConfig, options);
+        await mqttClient.PublishAsync(new MqttApplicationMessageBuilder()
+            .WithTopic(topic)
+            .WithPayload(payload)
+            .Build());
+        Console.WriteLine($"LedStripConfig Konfiguration gesendet an {topic}");
+        Console.WriteLine(payload);
+    }
+
     //public static async Task<ActivateLEDStrip> GetLedStripAsync()
+
     //{
     //    var topic = $"/SEH100/nd/{DeviceId}/Set/Data/LedStrip";
     //}
@@ -318,6 +333,19 @@ internal class Program
         Console.WriteLine("└" + separator + "┘");
         Console.WriteLine();
 
+        var config = new LedStripConfig
+        {
+            Content = "/Set/Config/LedStrip",
+            Demo = false
+        };
+
+        for (int i = 1; i <= 5; i++)
+        {
+            config.LedStrips.Add($"LED_STRIP_{i}", new StripDetails { Length = "42" });
+        }
+
+        await SetLEDStripe(config);
+
         var ledControlMessage = new LedControlMessage
         {
             Content = "/Set/Data/LedStrip",
@@ -341,8 +369,7 @@ internal class Program
                 }
             }
         };
-
-        await SetLedStripAsync(ledControlMessage);
+        await ActiveLEDStripe(ledControlMessage);
 
         await DisconnectToLocalServerAsync();
         await StopMqttServerAsync();
