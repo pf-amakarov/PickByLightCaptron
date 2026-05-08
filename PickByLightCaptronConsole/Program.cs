@@ -13,8 +13,12 @@ internal class Program
     public static MqttServer mqttServer;
     public static MqttClientDisconnectOptions mqttClientDisconnectOptions;
     public static IMqttClient mqttClient;
-    private const string Product = "SEH201";
-    private const string DeviceId = "EU-WigglyCaringPie";
+
+    //private const string Product = "SEH201";
+    //private const string DeviceId = "EU-WigglyCaringPie";
+    private const string Product = "SEH101";
+
+    private const string DeviceId = "EU-RudeLyingSlide";
 
     public static async Task StartMqttServerAsync()
     {
@@ -214,28 +218,8 @@ internal class Program
     {
         await StartMqttServerAsync();
 
-        Console.WriteLine("Warte auf Verbindung des Captron-Geräts...");
-        var deviceConnected = new TaskCompletionSource<bool>();
-
-        mqttServer.ClientConnectedAsync += e =>
-        {
-            Console.WriteLine($"Captron-Gerät verbunden: {e.ClientId}");
-            deviceConnected.TrySetResult(true);
-            return Task.CompletedTask;
-        };
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-        cts.Token.Register(() => deviceConnected.TrySetCanceled());
-
-        try
-        {
-            await deviceConnected.Task;
-        }
-        catch (TaskCanceledException)
-        {
-            Console.WriteLine("Timeout: Kein Captron-Gerät hat sich innerhalb von 60 Sekunden verbunden.");
-            return;
-        }
+        Console.WriteLine("Warte bis LED am HUB grün leuchtet.");
+        Console.ReadLine();
 
         await ConnectToLocalServerAsync();
         DeviceInformation deviceInformation = await GetDeviceInformationAsync();
@@ -259,19 +243,6 @@ internal class Program
         Console.WriteLine("└" + separator + "┘");
         Console.WriteLine();
 
-        var ledStripConfig = new LedStripConfig
-        {
-            Content = "/Set/Config/LedStrip",
-            Demo = false
-        };
-
-        for (int i = 1; i <= 5; i++)
-        {
-            ledStripConfig.LedStrips.Add($"LED_STRIP_{i}", new StripDetails { Length = "42" });
-        }
-
-        await SetLEDStripeConfig(ledStripConfig);
-
         var ledControlMessage = new LedControlMessage
         {
             Content = "/Set/Data/LedStrip",
@@ -285,11 +256,10 @@ internal class Program
                         StartLED = 0,
                         StopLED = 30,
                         Speed = 190,
-                        Effect = 1,
+                        Effect = 200,
                         Colors = new List<ColorRgb>
                         {
-                            new ColorRgb { R = 0, G = 150, B = 0 },
-                            new ColorRgb { R = 0, G = 150, B = 0 }
+                            new ColorRgb { R = 0, G = 0, B = 255 },
                         }
                     }
                 }
@@ -298,6 +268,9 @@ internal class Program
         await ActiveLEDStripe(ledControlMessage);
 
         await DisconnectToLocalServerAsync();
+
+        Console.ReadLine();
+
         await StopMqttServerAsync();
     }
 }
